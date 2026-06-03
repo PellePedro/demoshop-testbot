@@ -1,0 +1,36 @@
+# Skyramp Workspace Configuration
+workspace:
+  repoName: PellePedro/demoshop-testbot
+  repoUrl: https://github.com/PellePedro/demoshop-testbot
+metadata:
+  schemaVersion: v1
+  mcpVersion: 0.2.0
+  executorVersion: v1.3.25
+  createdAt: "2026-06-03T20:12:37.783Z"
+  updatedAt: "2026-06-03T20:12:37.790Z"
+services:
+  - serviceName: demoshop-backend
+    language: python
+    framework: pytest
+    testDirectory: backend/tests/python
+    api:
+      schemaPath: http://localhost:8000/openapi.json
+      authType: bearer
+      authHeader: Authorization
+      baseUrl: http://localhost:8000
+    runtimeDetails:
+      serverStartCommand: docker compose -f docker-compose.yaml up -d backend
+      runtime: docker
+      dockerNetwork: demoshop-testbot_demoshop-network
+  - serviceName: demoshop-frontend
+    language: typescript
+    framework: playwright
+    testDirectory: tests/skyramp/frontend
+    api:
+      authType: none
+      authHeader: ""
+      baseUrl: http://localhost:5173
+    runtimeDetails:
+      serverStartCommand: docker compose -f docker-compose.yaml up -d frontend
+      runtime: docker
+      dockerNetwork: demoshop-testbot_demoshop-network
