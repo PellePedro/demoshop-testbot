@@ -3,7 +3,7 @@ Order models for the API.
 """
 from datetime import datetime
 from enum import Enum
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field, EmailStr
 
 class OrderStatus(str, Enum):
@@ -40,6 +40,7 @@ class OrderBase(BaseModel):
     customer_email: EmailStr = Field(max_length=255)
     status: OrderStatus = Field(default=OrderStatus.PENDING)
     total_amount: float = Field(default=0.0)
+    discount_percent: float = Field(default=0.0, ge=0, le=100)
 
 class Order(OrderBase):
     """Model for orders."""
@@ -67,6 +68,25 @@ class OrderCreate(BaseModel):
         }
     }
 
+class OrderUpdate(BaseModel):
+    """Model for editing an existing order.
+
+    All fields are optional; only the provided fields are applied. Line items
+    are not editable here. ``total_amount`` is always recomputed server-side
+    from the order's line items and the (possibly updated) discount.
+    """
+    customer_email: Optional[EmailStr] = Field(default=None, max_length=255)
+    status: Optional[OrderStatus] = Field(default=None)
+    discount_percent: Optional[float] = Field(default=None, ge=0, le=100)
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "confirmed",
+                "discount_percent": 10
+            }
+        }
+    }
+
 class OrderRead(OrderBase):
     """Model for fetching order details from DB."""
     order_id: int
@@ -80,6 +100,7 @@ class OrderRead(OrderBase):
                 "customer_email": "abc@mail.com",
                 "status": "pending",
                 "total_amount": 19.98,
+                "discount_percent": 0,
                 "items": [
                     {
                         "order_item_id": 1,

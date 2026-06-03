@@ -2,6 +2,7 @@
 CRUD operations for orders.
 """
 from json import loads
+from datetime import datetime
 from fastapi.encoders import jsonable_encoder
 from redis import Redis
 from redis.commands.json.path import Path
@@ -100,6 +101,33 @@ def create_order(cache: Redis, session_id: str, order: OrderCreate) -> Order:
     cache.json().set(f'{key}:orders:{order_id}', Path.root_path(), order_encoded)
     cache.expire(f'{key}:orders:{order_id}', settings.KEY_TTL_SECONDS)
     return db_order
+
+def update_order(cache: Redis, session_id: str, order_id: int, order_update) -> Order | None:
+    """Edit an existing order.
+
+    Applies the provided editable fields (customer_email, status,
+    discount_percent) and always recomputes total_amount from the order's line
+    items so the total can never go stale relative to the items or discount.
+    Returns None if the order does not exist.
+    """
+    key = session_id if session_id and session_id != "" else DEFAULT_KEY
+    stored = cache.json().get(f'{key}:orders:{order_id}')
+    if not stored:
+        return None
+    order = Order.model_validate({**stored, "items": get_order_items(cache, key, order_id)})
+
+    update_data = order_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(order, field, value)
+
+    subtotal = sum(item.unit_price * item.quantity for item in order.items)
+    order.total_amount = round(subtotal * (1 - order.discount_percent / 100), 2)
+    order.updated_at = datetime.utcnow()
+
+    order_encoded = jsonable_encoder(order.model_dump())
+    cache.json().set(f'{key}:orders:{order_id}', Path.root_path(), order_encoded)
+    cache.expire(f'{key}:orders:{order_id}', settings.KEY_TTL_SECONDS)
+    return order
 
 def cancel_order(cache: Redis, session_id: str, order_id: int) -> None:
     """Cancel an order."""
