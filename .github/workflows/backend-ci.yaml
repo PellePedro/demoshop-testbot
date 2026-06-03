@@ -55,6 +55,7 @@ jobs:
           python3 -m pip install pytest
           export SKYRAMP_TEST_TOKEN=test-bearer-token
           pytest -vvv tests/python/products_*.py
+          pytest -vvv tests/python/orders_*.py
           pytest -vvv tests/python/reset_contract_test.py
 
       - name: Stop services

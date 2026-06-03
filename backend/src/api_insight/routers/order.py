@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query, Path
 from api_insight.deps import CacheDep, GetSessionIdDep, EnsureSessionDep
 from api_insight.exceptions import ResourceNotFoundException
 from api_insight.models.order import (
-    OrderCreate, OrderRead, OrderCancel
+    OrderCreate, OrderRead, OrderCancel, OrderUpdate
 )
 from api_insight.models.params import QueryParams
 from api_insight.crud import orders
@@ -71,6 +71,24 @@ async def get_order(
     if not order:
         raise ResourceNotFoundException(status_code=404, detail="Order not found")
     order.items = orders.get_order_items(cache, session_id, order_id)
+    return order
+
+@router.put("/{order_id}", response_model=OrderRead,
+           summary="Edit an order",
+           description="Update an order's customer email, status, or discount. "
+                       "The total is recomputed from the order's items.")
+async def update_order(
+    order_id: Annotated[int, Path(json_schema_extra={'example': 0})],
+    order_update: OrderUpdate,
+    cache: CacheDep,
+    session_id: GetSessionIdDep
+):
+    """
+    Edit an existing order
+    """
+    order = orders.update_order(cache, session_id, order_id, order_update)
+    if not order:
+        raise ResourceNotFoundException(status_code=404, detail="Order not found")
     return order
 
 @router.delete("/{order_id}",
